@@ -14,6 +14,7 @@ namespace Horton
 
         public override byte TypeCode { get { return 1; } }
         public override bool ConflictOnContent { get { return true; } }
+        public override bool IsDesiredState { get { return false; } }
 
         public override int CompareTo(ScriptFile other)
         {

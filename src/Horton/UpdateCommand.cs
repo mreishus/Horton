@@ -17,9 +17,12 @@ namespace Horton
                 var loader = new FileLoader(options.MigrationsDirectoryPath);
                 loader.LoadAllFiles();
 
-                Console.WriteLine("=== Info ===");
-                Console.WriteLine();
-                Console.WriteLine("The following scripts will execute...");
+                if (!options.Unattend)
+                {
+                    Console.WriteLine("=== Info ===");
+                    Console.WriteLine();
+                    Console.WriteLine("The following scripts will execute...");
+                }
 
                 var toExecute = new List<ScriptFile>();
                 bool willExecuteMigrations = true;
@@ -29,7 +32,7 @@ namespace Horton
                     var existingRecord = schemaInfo.AppliedMigrations.SingleOrDefault(x => x.FileNameMD5Hash == file.FileNameHash);
                     if (existingRecord != null)
                     {
-                        if (file.ContentMatches(existingRecord.ContentSHA1Hash))
+                        if (!file.IsDesiredState && file.ContentMatches(existingRecord.ContentSHA1Hash))
                         {
                             continue;
                         }
@@ -42,9 +45,12 @@ namespace Horton
                             continue;
                         }
                     }
-                    Console.ForegroundColor = ConsoleColor.DarkGreen;
-                    Console.WriteLine($"\n\"{file.FileName}\" will execute on UPDATE.");
-                    Console.ForegroundColor = prevColor;
+                    if (!options.Unattend)
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkGreen;
+                        Console.WriteLine($"\"{file.FileName}\" will execute on UPDATE.");
+                        Console.ForegroundColor = prevColor;
+                    }
                     toExecute.Add(file);
                 }
 
@@ -70,8 +76,10 @@ namespace Horton
 
                 foreach (var file in toExecute)
                 {
-                    Console.ForegroundColor = ConsoleColor.DarkGreen;
-                    Console.Write($"\nApplying \"{file.FileName}\"... ");
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.Write($"Applying ");
+                    Console.ResetColor();
+                    Console.Write($"\"{file.FileName}\"... ");
                     schemaInfo.ApplyMigration(file);
                     Console.WriteLine("done.");
                     Console.ForegroundColor = prevColor;

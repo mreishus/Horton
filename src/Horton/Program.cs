@@ -30,7 +30,16 @@ namespace Horton
         {
             Console.WriteLine();
             Console.WriteLine("Horton. The simple database migration utility.");
-            Console.WriteLine();
+            Console.Write("Modified by ");
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write("mreishus");
+            Console.ResetColor();
+            Console.Write(" for ");
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.Write("Desired State Config");
+            Console.ResetColor();
+            Console.WriteLine(".");
+            Console.WriteLine("https://github.com/mreishus/horton/");
 
             var options = new HortonOptions();
             bool showHelp = false;

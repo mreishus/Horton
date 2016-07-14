@@ -47,6 +47,7 @@ namespace Horton
 
         public abstract byte TypeCode { get; }
         public abstract bool ConflictOnContent { get; }
+        public abstract bool IsDesiredState { get; }
 
         public int CompareTo(object obj)
         {
