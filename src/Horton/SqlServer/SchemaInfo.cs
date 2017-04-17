@@ -99,7 +99,7 @@ namespace Horton.SqlServer
 
         public static string[] ParseSqlScript(string script)
         {
-            var regex = new Regex("^GO", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            var regex = new Regex("^GO(?!\\S)", RegexOptions.IgnoreCase | RegexOptions.Multiline);
             return regex.Split(script);
         }
 
