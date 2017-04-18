@@ -69,6 +69,13 @@ namespace Horton.SqlServer
         public void ApplyMigration(ScriptFile migration)
         {
             AssertNotDisposed();
+            // MREISHUS customization: If a script has "horton_no_transaction", run it outside
+            // of a transaction (useful for DDL statements that can't be run in a transaction)
+            if (migration.Content.Contains("horton_no_transaction"))
+            {
+                ApplyMigrationNoTransaction(migration);
+                return;
+            }
             var commands = ParseSqlScript(migration.Content);
             using (var transaction = Connection.BeginTransaction() as SqlTransaction)
             {
@@ -87,6 +94,38 @@ namespace Horton.SqlServer
                     }
                 }
                 sw.Stop();
+                if (migration is RepeatableScript)
+                {
+                    // delete any existing record before inserting
+                    TryDeleteMigration(transaction, migration);
+                }
+                RecordMigration(transaction, migration, sw.Elapsed.TotalMilliseconds);
+                transaction.Commit();
+            }
+        }
+
+        private void ApplyMigrationNoTransaction(ScriptFile migration)
+        {
+            AssertNotDisposed();
+            var commands = ParseSqlScript(migration.Content);
+
+            var sw = new Stopwatch();
+            sw.Restart();
+            foreach (var command in commands)
+            {
+                if (string.IsNullOrWhiteSpace(command))
+                    continue;
+                using (SqlCommand cmd = Connection.CreateCommand() as SqlCommand)
+                {
+                    cmd.CommandTimeout = 3000;
+                    cmd.CommandText = command;
+                    var rowsAffected = cmd.ExecuteNonQuery();
+                }
+            }
+            sw.Stop();
+
+            using (var transaction = Connection.BeginTransaction() as SqlTransaction)
+            {
                 if (migration is RepeatableScript)
                 {
                     // delete any existing record before inserting
