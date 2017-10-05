@@ -5,7 +5,7 @@ namespace Horton
 {
     internal class HistoryCommand : HortonCommand
     {
-        public override void Execute(HortonOptions options)
+        public override void ExecuteAsync(HortonOptions options)
         {
             using (var schemaInfo = new SchemaInfo(options))
             {

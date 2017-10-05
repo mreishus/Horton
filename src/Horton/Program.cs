@@ -19,6 +19,9 @@ namespace Horton
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.Error.WriteLine(ex.Message);
                 Console.Error.WriteLine(ex.StackTrace);
+                Console.ResetColor();
+                Console.Error.WriteLine("Horton.exe - Exiting with error code 1");
+                Environment.Exit(1);
             }
             finally
             {
@@ -93,7 +96,7 @@ namespace Horton
             }
 
             Console.WriteLine();
-            options.Command.Execute(options);
+            options.Command.ExecuteAsync(options);
         }
 
         static void ShowHelp(OptionSet p)

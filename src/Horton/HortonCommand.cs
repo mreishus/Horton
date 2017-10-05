@@ -2,6 +2,6 @@
 {
     public abstract class HortonCommand
     {
-        public abstract void Execute(HortonOptions options);
+        public abstract void ExecuteAsync(HortonOptions options);
     }
 }

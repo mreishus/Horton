@@ -6,7 +6,7 @@ namespace Horton
 {
     internal class InfoCommand : HortonCommand
     {
-        public override void Execute(HortonOptions options)
+        public override void ExecuteAsync(HortonOptions options)
         {
             var prevColor = Console.ForegroundColor;
             using (var schemaInfo = new SchemaInfo(options))

@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using Horton.SqlServer;
+using System.Threading.Tasks;
+using Nito.AsyncEx;
 
 namespace Horton
 {
     internal class UpdateCommand : HortonCommand
     {
-        public override void Execute(HortonOptions options)
+        public override void ExecuteAsync(HortonOptions options)
         {
             var prevColor = Console.ForegroundColor;
             using (var schemaInfo = new SchemaInfo(options))
@@ -25,6 +27,7 @@ namespace Horton
                 }
 
                 var toExecute = new List<ScriptFile>();
+                var toExecuteDesiredState = new List<ScriptFile>();
                 bool willExecuteMigrations = true;
 
                 foreach (var file in loader.Files)
@@ -51,7 +54,15 @@ namespace Horton
                         Console.WriteLine($"\"{file.FileName}\" will execute on UPDATE.");
                         Console.ForegroundColor = prevColor;
                     }
-                    toExecute.Add(file);
+
+                    if (file.IsDesiredState)
+                    {
+                        toExecuteDesiredState.Add(file);
+                    }
+                    else
+                    {
+                        toExecute.Add(file);
+                    }
                 }
 
                 if (!willExecuteMigrations)
@@ -62,7 +73,7 @@ namespace Horton
                     return;
                 }
 
-                if (!options.Unattend && toExecute.Any())
+                if (!options.Unattend && (toExecute.Any() || toExecuteDesiredState.Any()))
                 {
                     Console.WriteLine($"\nAbout to execute {toExecute.Count} scripts. Press 'y' to continue.");
                     var c = Console.ReadKey();
@@ -85,8 +96,68 @@ namespace Horton
                     Console.ForegroundColor = prevColor;
                 }
 
+                AsyncContext.Run(async() => await RunMigrationsInParallel(toExecuteDesiredState, options));
+
                 Console.WriteLine();
                 Console.WriteLine("Finished.");
+            }
+        }
+
+        public async Task RunMigrationsInParallel(List<ScriptFile> toExecuteDesiredState, HortonOptions options)
+        {
+            var toExecuteDesiredStateArrays = Partition(toExecuteDesiredState, 8);
+            var tasks = new List<Task>();
+            foreach (var runMe in toExecuteDesiredStateArrays)
+            {
+                tasks.Add(Task.Run(() => ApplyMigrations(runMe.ToList(), options)));
+                //tasks.Add(ApplyMigrations(runMe.ToList(), schemaInfo));
+            }
+            await Task.WhenAll(tasks);
+        }
+
+        public void ApplyMigrations(List<ScriptFile> toExecute, HortonOptions options)
+        {
+            using (var schemaInfo = new SchemaInfo(options))
+            {
+                var prevColor = Console.ForegroundColor;
+                foreach (var file in toExecute)
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.Write($"\"{file.FileName}\"... ");
+                    Console.ResetColor();
+                    Console.WriteLine($"Begin applying.");
+
+                    schemaInfo.ApplyMigration(file);
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.Write($"\"{file.FileName}\"... ");
+                    Console.ResetColor();
+                    Console.WriteLine($"Done.");
+                    Console.ForegroundColor = prevColor;
+                }
+            }
+        }
+
+        public IEnumerable<IEnumerable<T>> Partition<T>(IEnumerable<T> source, int size)
+        {
+            var partition = new List<T>(size);
+            var counter = 0;
+
+            using (var enumerator = source.GetEnumerator())
+            {
+                while (enumerator.MoveNext())
+                {
+                    partition.Add(enumerator.Current);
+                    counter++;
+                    if (counter % size == 0)
+                    {
+                        yield return partition.ToList();
+                        partition.Clear();
+                        counter = 0;
+                    }
+                }
+
+                if (counter != 0)
+                    yield return partition;
             }
         }
     }
